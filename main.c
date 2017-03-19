@@ -24,20 +24,6 @@
 #define PWM0_PPI_CH_B       1
 #define PWM0_TIMER_CC_NUM   0
 
-#define PWM1_GPIOTE_CH      1
-#define PWM1_PPI_CH_A       2
-#define PWM1_TIMER_CC_NUM   1
-
-#define PWMN_GPIOTE_CH      {PWM0_GPIOTE_CH, PWM1_GPIOTE_CH, 2, 3, 4}
-#define PWMN_PPI_CH_A       {PWM0_PPI_CH_A, PWM1_PPI_CH_A, 3, 5, 6}
-#define PWMN_PPI_CH_B       {PWM0_PPI_CH_B, PWM0_PPI_CH_B, 4, 4, 7}
-#define PWMN_TIMER_CC_NUM   {PWM0_TIMER_CC_NUM, PWM1_TIMER_CC_NUM, 2, 3, 4}
-
-static uint32_t pwmN_gpiote_ch[]    = PWMN_GPIOTE_CH;
-static uint32_t pwmN_ppi_ch_a[]     = PWMN_PPI_CH_A;      
-static uint32_t pwmN_ppi_ch_b[]     = PWMN_PPI_CH_B;   
-static uint32_t pwmN_timer_cc_num[] = PWMN_TIMER_CC_NUM;
-
 // TIMER3 reload value. The PWM frequency equals '16000000 / TIMER_RELOAD'
 #define TIMER_RELOAD        1024
 // The timer CC register used to reset the timer. Be aware that not all timers in the nRF52 have 6 CC registers.
@@ -84,18 +70,7 @@ void pwm0_init(uint32_t pinselect)
 // ### ------------------ TASK 1: STEP 1 ------------------
 // ### Implement a method for initializing PWM channel 1, for a total of 2 individual PWM channels, and call it 'pwm1_init(uint32_t pinselect)'
 // ### Hint: You can copy 'pwm0_init(..)' and use it as a starting point
-void pwm1_init(uint32_t pinselect)
-{
-    NRF_GPIOTE->CONFIG[PWM1_GPIOTE_CH] = GPIOTE_CONFIG_MODE_Task << GPIOTE_CONFIG_MODE_Pos | 
-                                         GPIOTE_CONFIG_POLARITY_Toggle << GPIOTE_CONFIG_POLARITY_Pos | 
-                                         pinselect << GPIOTE_CONFIG_PSEL_Pos | 
-                                         GPIOTE_CONFIG_OUTINIT_High << GPIOTE_CONFIG_OUTINIT_Pos;
 
-    NRF_PPI->CH[PWM1_PPI_CH_A].EEP   = (uint32_t)&NRF_TIMER3->EVENTS_COMPARE[PWM1_TIMER_CC_NUM];
-    NRF_PPI->CH[PWM1_PPI_CH_A].TEP   = (uint32_t)&NRF_GPIOTE->TASKS_CLR[PWM1_GPIOTE_CH];
-    NRF_PPI->FORK[PWM0_PPI_CH_B].TEP = (uint32_t)&NRF_GPIOTE->TASKS_SET[PWM1_GPIOTE_CH];
-    NRF_PPI->CHENSET                 = (1 << PWM1_PPI_CH_A) | (1 << PWM0_PPI_CH_B);    
-}
 // ### ----------------------------------------------------
 
 
@@ -110,31 +85,7 @@ void pwm1_init(uint32_t pinselect)
 // ### Make a generic init function that takes both the PWM channel number and the pinselect as arguments,
 // ### to avoid having to implement one function for each channel. The function should support up to 4 PWM channels total.
 // ### Hint: Don't start on the optional steps until all the required steps are complete. 
-void pwmN_init(uint32_t N, uint32_t pinselect)
-{    
-    if(N <= 5)
-    {
-        NRF_GPIO->DIRSET = 1 << pinselect;
-        
-        NRF_GPIOTE->CONFIG[pwmN_gpiote_ch[N]] = GPIOTE_CONFIG_MODE_Task << GPIOTE_CONFIG_MODE_Pos | 
-                                                GPIOTE_CONFIG_POLARITY_Toggle << GPIOTE_CONFIG_POLARITY_Pos | 
-                                                pinselect << GPIOTE_CONFIG_PSEL_Pos | 
-                                                GPIOTE_CONFIG_OUTINIT_High << GPIOTE_CONFIG_OUTINIT_Pos;
 
-        NRF_PPI->CH[pwmN_ppi_ch_a[N]].EEP     = (uint32_t)&NRF_TIMER3->EVENTS_COMPARE[pwmN_timer_cc_num[N]];
-        NRF_PPI->CH[pwmN_ppi_ch_a[N]].TEP     = (uint32_t)&NRF_GPIOTE->TASKS_CLR[pwmN_gpiote_ch[N]];
-        if((N % 2) == 0)
-        {
-            NRF_PPI->CH[pwmN_ppi_ch_b[N]].EEP = (uint32_t)&NRF_TIMER3->EVENTS_COMPARE[TIMER_RELOAD_CC_NUM];
-            NRF_PPI->CH[pwmN_ppi_ch_b[N]].TEP = (uint32_t)&NRF_GPIOTE->TASKS_SET[pwmN_gpiote_ch[N]];
-        }
-        else
-        {
-            NRF_PPI->FORK[pwmN_ppi_ch_b[N-1]].TEP = (uint32_t)&NRF_GPIOTE->TASKS_SET[pwmN_gpiote_ch[N]];
-        }
-        NRF_PPI->CHENSET                      = (1 << pwmN_ppi_ch_a[N]) | (1 << pwmN_ppi_ch_b[N]); 
-    }        
-}
 // ### ----------------------------------------------------
 
 
@@ -156,48 +107,13 @@ void pwm0_set_duty_cycle(uint32_t value)
 // ### ------------------ TASK 1: STEP 3 ------------------
 // ### Implement a method for setting the duty cycle on PWM channel 1, and call it 'pwm1_set_duty_cycle(uint32_t value)'
 // ### Hint: You can copy 'pwm0_set_duty_cycle(..)' and use it as a starting point
-void pwm1_set_duty_cycle(uint32_t value)
-{
-    if(value == 0)
-    {
-        value = 1;
-    }
-    else if(value >= TIMER_RELOAD)
-    {
-        value = TIMER_RELOAD - 1;
-    }
-    NRF_TIMER3->CC[PWM1_TIMER_CC_NUM] = value;
-}
+
 // ### ----------------------------------------------------
 
 
 // ### ------------------ TASK 1: STEP 7 (optional) ----------
 // ### Make a generic set duty cycle function to support a total of 4 PWM channels.
-void pwmN_set_duty_cycle(uint32_t N, uint32_t value)
-{
-    if(N <= 5)
-    {
-        uint32_t pwmN_pin_assignment = (NRF_GPIOTE->CONFIG[pwmN_gpiote_ch[N]] & GPIOTE_CONFIG_PSEL_Msk) >> GPIOTE_CONFIG_PSEL_Pos;
-        if(value == 0)
-        {
-            NRF_GPIOTE->CONFIG[pwmN_gpiote_ch[N]] &= ~GPIOTE_CONFIG_MODE_Msk;
-            NRF_GPIOTE->CONFIG[pwmN_gpiote_ch[N]] |= GPIOTE_CONFIG_MODE_Disabled << GPIOTE_CONFIG_MODE_Pos;
-            NRF_GPIO->OUTCLR = (1 << pwmN_pin_assignment);
-        }
-        else if(value >= TIMER_RELOAD)
-        {
-            NRF_GPIOTE->CONFIG[pwmN_gpiote_ch[N]] &= ~GPIOTE_CONFIG_MODE_Msk;
-            NRF_GPIOTE->CONFIG[pwmN_gpiote_ch[N]] |= GPIOTE_CONFIG_MODE_Disabled << GPIOTE_CONFIG_MODE_Pos;
-            NRF_GPIO->OUTSET = (1 << pwmN_pin_assignment);
-        }
-        else
-        {
-            NRF_GPIOTE->CONFIG[pwmN_gpiote_ch[N]] &= ~GPIOTE_CONFIG_MODE_Msk;
-            NRF_GPIOTE->CONFIG[pwmN_gpiote_ch[N]] |= GPIOTE_CONFIG_MODE_Task << GPIOTE_CONFIG_MODE_Pos;
-            NRF_TIMER3->CC[pwmN_timer_cc_num[N]] = value;    
-        }            
-    }
-}
+
 // ### ----------------------------------------------------
 
 
@@ -229,13 +145,12 @@ int main(void)
     
     // ### ------------------ TASK 1: STEP 4 ------------------
     // ### Call the init function implemented in STEP 1, and configure the additional PWM channel on LED_2.
-    pwm1_init(LED_2);
+
     // ### ----------------------------------------------------
     
     // ### ------------------ TASK 1: STEP 9 (optional) -------
     // ### Call the generic init function implemented in STEP 6, and configure 2 more PWM channels on LED_3 and LED_4.
-    pwmN_init(2, LED_3);
-    pwmN_init(3, LED_4);
+
     // ### ----------------------------------------------------
     
     // Start the timer
@@ -250,13 +165,12 @@ int main(void)
         
         // ### ------------------ TASK 1: STEP 5 ------------------
         // ### Update the duty cycle of PWM channel 1, and add an offset to the counter to make the LED's blink out of phase.
-        pwm1_set_duty_cycle(sin_scaled(counter + 50, 200, 0, TIMER_RELOAD));
+
         // ### ----------------------------------------------------
         
         // ### ------------------ TASK 1: STEP 10 (optional) ------
         // ### Update the duty cycle of PWM channel 2 and 3, using the generic functions implemented earlier.
-        pwmN_set_duty_cycle(2, sin_scaled(counter + 150, 200, 0, TIMER_RELOAD));
-        pwmN_set_duty_cycle(3, sin_scaled(counter + 100, 200, 0, TIMER_RELOAD)); 
+ 
         // ### ----------------------------------------------------        
     }
 }
