@@ -6,7 +6,8 @@ These peripherals will be used to implement a multi channel PWM feature that doe
 
 The picture below shows how the CC registers of a timer can be used to control several separate PWM channels through the PPI controller, as will be done in this example:
 
-![](https://github.com/NordicSemiconductor/nrf52-timer-gpiote-ppi-hands-on/tree/master/pics)
+
+![](https://github.com/NordicSemiconductor/nrf52-timer-gpiote-ppi-hands-on/tree/master/pics/scope.png)
 
 ## Task 1: Add an additional PWM channel
 
